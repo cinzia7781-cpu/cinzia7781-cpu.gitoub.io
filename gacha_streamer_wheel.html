@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gacha Streamer Wheel - สุ่มเวลาโดเนท</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        neon: {
+                            purple: '#a855f7',
+                            pink: '#ec4899',
+                            blue: '#3b82f6',
+                            cyan: '#06b6d4',
+                            yellow: '#eab308',
+                            bg: '#0b0b14',
+                            card: '#161626'
+                        }
+                    },
+                    fontFamily: {
+                        kanit: ['Kanit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #0b0b14;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        /* Neon Glow Effects */
+        .neon-border-pink {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4), inset 0 0 15px rgba(236, 72, 153, 0.2);
+        }
+        .neon-border-purple {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), inset 0 0 15px rgba(168, 85, 247, 0.2);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 10px rgba(236, 72, 153, 0.7), 0 0 20px rgba(236, 72, 153, 0.5);
+        }
+        .neon-text-purple {
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.7), 0 0 20px rgba(168, 85, 247, 0.5);
+        }
+        .neon-text-gold {
+            text-shadow: 0 0 10px rgba(234, 179, 8, 0.8), 0 0 25px rgba(234, 179, 8, 0.6);
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(22, 22, 38, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Wheel Pointer Glow */
+        .wheel-pointer {
+            filter: drop-shadow(0px 0px 8px #ec4899);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0b14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a40;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ec4899;
+        }
+
+        /* Card Shimmer Effect for Multi Pulls */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .animate-shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        /* Overlay Mode Styles */
+        body.overlay-mode {
+            background-color: transparent !important;
+        }
+        body.overlay-mode .non-overlay {
+            display: none !important;
+        }
+        body.overlay-mode .overlay-container {
+            padding: 0;
+            margin: 0;
+            max-width: 100% !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-pink-500 selection:text-white">
+
+    <!-- Navigation / Header -->
+    <header class="non-overlay glass-panel sticky top-0 z-40 border-b border-purple-900/40 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-xl shadow-lg shadow-pink-500/30">
+                    <i class="fa-solid font-bold fa-dharmachakra text-2xl text-white animate-spin-slow"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black italic tracking-wider bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 bg-clip-text text-transparent">
+                        DONATE GACHA <span class="text-xs px-2 py-0.5 rounded bg-pink-500/20 border border-pink-500/40 text-pink-300 not-italic">TIMER</span>
+                    </h1>
+                    <p class="text-xs text-gray-400">วงล้อสุ่มเวลาสตรีมเมอร์ & เพิ่มดีกรีความมันส์!</p>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center space-x-2 md:space-x-3 text-sm">
+                <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-2 rounded-lg glass-panel hover:border-purple-500 text-gray-300 hover:text-white transition flex items-center gap-2">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-pink-400"></i>
+                    <span class="hidden sm:inline" id="soundStatusText">เปิดเสียง</span>
+                </button>
+
+                <button onclick="toggleOverlayMode()" class="px-3 py-2 rounded-lg bg-purple-900/40 border border-purple-500/40 hover:bg-purple-800/60 text-purple-200 transition flex items-center gap-2">
+                    <i class="fa-solid fa-desktop text-cyan-400"></i>
+                    <span>โหมด OBS Overlay</span>
+                </button>
+
+                <button onclick="openSettingsModal()" class="px-3 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold transition flex items-center gap-2 shadow-lg shadow-purple-600/30">
+                    <i class="fa-solid fa-gear"></i>
+                    <span class="hidden sm:inline">ตั้งค่าเรท/รางวัล</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="overlay-container max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Side: Wheel & Quick Pull Buttons (lg:col-span-7) -->
+        <section class="lg:col-span-7 flex flex-col items-center justify-center space-y-6">
+            
+            <!-- Total Timer Dashboard Banner -->
+            <div class="w-full glass-panel rounded-2xl p-4 md:p-6 border border-pink-500/30 neon-border-pink relative overflow-hidden flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="text-center sm:text-left z-10">
+                    <span class="text-xs font-semibold uppercase tracking-widest text-pink-400 flex items-center gap-1.5 justify-center sm:justify-start">
+                        <span class="w-2 h-2 rounded-full bg-pink-500 animate-ping"></span>
+                        เวลารวมสะสมจากสุ่ม (Session Time)
+                    </span>
+                    <div id="totalTimeDisplay" class="text-3xl md:text-5xl font-black text-white font-mono tracking-tight neon-text-pink mt-1">
+                        +00:00:00
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 z-10">
+                    <button onclick="resetTotalTime()" class="px-3 py-2 text-xs bg-red-900/30 hover:bg-red-800/50 border border-red-500/40 text-red-300 rounded-lg transition" title="รีเซ็ตเวลารวม">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> รีเซ็ตเวลา
+                    </button>
+                    <button onclick="copyTotalTime()" class="px-3 py-2 text-xs bg-purple-900/30 hover:bg-purple-800/50 border border-purple-500/40 text-purple-300 rounded-lg transition">
+                        <i class="fa-regular fa-copy mr-1"></i> คัดลอก
+                    </button>
+                </div>
+            </div>
+
+            <!-- Gacha Wheel Display Container -->
+            <div class="relative w-full max-w-[420px] aspect-square flex items-center justify-center p-2">
+                <!-- Pointer/Indicator -->
+                <div class="absolute top-0 z-30 transform -translate-y-2 wheel-pointer">
+                    <div class="w-8 h-10 bg-gradient-to-b from-pink-500 to-purple-600 clip-triangle shadow-lg shadow-pink-500/80 flex items-center justify-center">
+                        <i class="fa-solid fa-caret-down text-white text-2xl -mt-2"></i>
+                    </div>
+                </div>
+
+                <!-- Glow Background behind Wheel -->
+                <div class="absolute inset-4 rounded-full bg-gradient-to-tr from-purple-600/20 via-pink-500/20 to-cyan-500/20 blur-xl"></div>
+
+                <!-- Canvas Wheel Element -->
+                <canvas id="wheelCanvas" width="400" height="400" class="relative z-10 w-full h-full rounded-full shadow-2xl border-4 border-purple-500/40 cursor-pointer"></canvas>
+
+                <!-- Wheel Center Ornament -->
+                <div class="absolute z-20 w-16 h-16 rounded-full glass-panel border-2 border-pink-500 flex items-center justify-center shadow-lg pointer-events-none">
+                    <i class="fa-solid fa-crown text-pink-400 text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Spin Control Buttons -->
+            <div class="w-full flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <button id="spinOneBtn" onclick="spinWheel(1)" class="w-full sm:w-1/2 py-4 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-lg shadow-lg shadow-purple-600/40 hover:shadow-purple-500/60 transform hover:-translate-y-0.5 active:translate-y-0 transition flex items-center justify-center gap-2 border border-purple-400/30">
+                    <i class="fa-solid fa-arrows-spin text-xl"></i>
+                    <span>สุ่ม 1 ครั้ง</span>
+                </button>
+
+                <button id="spinTenBtn" onclick="spinWheel(10)" class="w-full sm:w-1/2 py-4 px-6 rounded-xl bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white font-bold text-lg shadow-lg shadow-pink-600/40 hover:shadow-pink-500/60 transform hover:-translate-y-0.5 active:translate-y-0 transition flex items-center justify-center gap-2 border border-pink-400/30">
+                    <i class="fa-solid fa-bolt text-xl text-yellow-300"></i>
+                    <span>สุ่มรัว 10 ครั้ง!</span>
+                </button>
+            </div>
+
+            <!-- Overlay Return Button (Visible only in overlay mode) -->
+            <div class="hidden overlay-return-btn text-center mt-4">
+                <button onclick="toggleOverlayMode()" class="px-4 py-2 bg-gray-900/80 border border-gray-700 text-gray-300 hover:text-white rounded-lg text-xs">
+                    <i class="fa-solid fa-xmark mr-1"></i> ออกจากโหมด Overlay
+                </button>
+            </div>
+
+        </section>
+
+        <!-- Right Side: Prize Odds & History Logs (lg:col-span-5) -->
+        <section class="non-overlay lg:col-span-5 space-y-6">
+            
+            <!-- Rarity Rate Box -->
+            <div class="glass-panel rounded-2xl p-5 border border-purple-900/40">
+                <h3 class="text-sm font-bold uppercase text-purple-300 tracking-wider mb-3 flex items-center justify-between">
+                    <span><i class="fa-solid fa-chart-pie mr-2 text-pink-400"></i> อัตราสุ่ม (Rarity & Odds)</span>
+                    <span id="itemCountBadge" class="text-xs bg-purple-900/60 text-purple-200 px-2 py-0.5 rounded-full border border-purple-500/30">0 รายการ</span>
+                </h3>
+                
+                <div id="rarityList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <!-- Dynamic Rarity Rates populated by JS -->
+                </div>
+            </div>
+
+            <!-- History Log Box -->
+            <div class="glass-panel rounded-2xl p-5 border border-purple-900/40 flex flex-col h-[340px]">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold uppercase text-purple-300 tracking-wider flex items-center">
+                        <i class="fa-solid fa-clock-rotate-left mr-2 text-cyan-400"></i> ประวัติการสุ่มล่าสุด
+                    </h3>
+                    <button onclick="clearHistory()" class="text-xs text-gray-400 hover:text-red-400 transition flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i> ล้างประวัติ
+                    </button>
+                </div>
+
+                <!-- History Table Container -->
+                <div class="flex-grow overflow-y-auto pr-1">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="sticky top-0 bg-neon-card text-purple-300 font-semibold border-b border-purple-800/40">
+                            <tr>
+                                <th class="pb-2">เวลา</th>
+                                <th class="pb-2">รางวัลที่ได้</th>
+                                <th class="pb-2 text-right">เวลาสุ่มได้</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-purple-900/20">
+                            <tr id="emptyHistoryRow">
+                                <td colspan="3" class="text-center py-8 text-gray-500 italic">ยังไม่มีประวัติการสุ่มเวลา</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="non-overlay text-center py-4 text-xs text-gray-500 border-t border-purple-900/20">
+        <p>Gacha Streamer Timer Wheel &copy; Web App สำหรับสตรีมเมอร์ | ตกแต่งสไตล์ Neon Twitch/YouTube</p>
+    </footer>
+
+    <!-- Modal 1: Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel rounded-2xl max-w-2xl w-full p-6 border border-purple-500/40 max-h-[90vh] flex flex-col shadow-2xl">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 border-b border-purple-800/40">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-pink-400"></i> ตั้งค่ารายการรางวัลและโอกาสสุ่ม
+                </h2>
+                <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body / Form -->
+            <div class="py-4 space-y-4 overflow-y-auto flex-grow pr-1">
+                
+                <!-- Quick Preset Options -->
+                <div class="flex items-center gap-2 pb-2">
+                    <span class="text-xs text-gray-400">พรีเซ็ตสำเร็จรูป:</span>
+                    <button onclick="loadPreset('standard')" class="text-xs px-2.5 py-1 bg-purple-900/40 border border-purple-500/30 rounded hover:bg-purple-800/60 text-purple-200">มาตรฐาน</button>
+                    <button onclick="loadPreset('hardcore')" class="text-xs px-2.5 py-1 bg-pink-900/40 border border-pink-500/30 rounded hover:bg-pink-800/60 text-pink-200">สายโหด (มีติดลบ)</button>
+                    <button onclick="loadPreset('generous')" class="text-xs px-2.5 py-1 bg-cyan-900/40 border border-cyan-500/30 rounded hover:bg-cyan-800/60 text-cyan-200">สายเปย์ (บวกเยอะ)</button>
+                </div>
+
+                <!-- Dynamic Item List Container -->
+                <div id="settingsItemList" class="space-y-3">
+                    <!-- Populated by JS -->
+                </div>
+
+                <button onclick="addNewPrizeItem()" class="w-full py-2.5 border-2 border-dashed border-purple-500/40 hover:border-purple-400 text-purple-300 rounded-xl hover:bg-purple-900/20 transition text-sm font-semibold flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> เพิ่มรางวัลใหม่
+                </button>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="pt-4 border-t border-purple-800/40 flex justify-end gap-3">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm">ยกเลิก</button>
+                <button onclick="saveSettings()" class="px-5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-sm shadow-lg shadow-purple-600/30">
+                    บันทึกการตั้งค่า
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Gacha Result Popup Modal -->
+    <div id="resultModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 border border-pink-500/50 text-center relative overflow-hidden shadow-2xl">
+            <!-- Background Glow -->
+            <div id="resultGlowBg" class="absolute inset-0 bg-pink-500/10 blur-2xl pointer-events-none"></div>
+
+            <h2 id="resultTitle" class="text-2xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-purple-400 mb-2">
+                🎉 ยินดีด้วย!
+            </h2>
+            <p class="text-xs text-gray-400 mb-4">ผลการสุ่มกาชาโดเนทที่ได้รับ</p>
+
+            <!-- Single or Multi Result Box -->
+            <div id="resultCardsContainer" class="max-h-[50vh] overflow-y-auto p-2 my-2 space-y-3">
+                <!-- Dynamic Pull Result Cards Inserted Here -->
+            </div>
+
+            <!-- Total Result Summary -->
+            <div class="mt-4 p-3 bg-purple-950/60 rounded-xl border border-purple-500/30 flex justify-between items-center">
+                <span class="text-sm font-semibold text-gray-300">รวมเวลาที่ได้รอบนี้:</span>
+                <span id="resultTotalTimeBadge" class="text-2xl font-bold font-mono text-pink-400 neon-text-pink">+0 นาที</span>
+            </div>
+
+            <button onclick="closeResultModal()" class="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-base shadow-lg shadow-pink-600/40">
+                รับทราบ / ปิดหน้าต่าง
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           1. RARITY & DEFAULT PRIZE POOL DEFINITIONS
+           ========================================================================== */
+        const RARITY_TYPES = {
+            COMMON: { name: 'Common (ทั่วไป)', color: '#9ca3af', bg: '#374151', weight: 50, glow: 'rgba(156, 163, 175, 0.4)' },
+            RARE: { name: 'Rare (หายาก)', color: '#3b82f6', bg: '#1e3a8a', weight: 30, glow: 'rgba(59, 130, 246, 0.4)' },
+            EPIC: { name: 'Epic (มหากาพย์)', color: '#a855f7', bg: '#581c87', weight: 14, glow: 'rgba(168, 85, 247, 0.5)' },
+            LEGENDARY: { name: 'Legendary (ตำนาน)', color: '#eab308', bg: '#713f12', weight: 5, glow: 'rgba(234, 179, 8, 0.6)' },
+            MYTHIC: { name: 'Mythic (แจ็คพอต)', color: '#ec4899', bg: '#831843', weight: 1, glow: 'rgba(236, 72, 153, 0.8)' }
+        };
+
+        let prizePool = [
+            { id: 1, name: 'บวก 10 นาที', minutes: +10, rarity: 'COMMON', weight: 40 },
+            { id: 2, name: 'ลบ 10 นาที', minutes: -10, rarity: 'COMMON', weight: 40 },
+            { id: 3, name: 'บวก 20 นาที', minutes: +20, rarity: 'RARE', weight: 25 },
+            { id: 4, name: 'ลบ 20 นาที', minutes: -20, rarity: 'RARE', weight: 25 },
+            { id: 5, name: 'บวก 30 นาที', minutes: +30, rarity: 'EPIC', weight: 15 },
+            { id: 6, name: 'ลบ 30 นาที', minutes: -30, rarity: 'EPIC', weight: 15 },
+            { id: 7, name: 'บวก 45 นาที', minutes: +45, rarity: 'LEGENDARY', weight: 5 },
+            { id: 8, name: 'ลบ 45 นาที', minutes: -45, rarity: 'LEGENDARY', weight: 5 },
+            { id: 9, name: 'บวก 1 ชั่วโมง', minutes: +60, rarity: 'MYTHIC', weight: 1 },
+            { id: 10, name: 'ลบ 1 ชั่วโมง', minutes: -60, rarity: 'MYTHIC', weight: 1 },
+        ];
+
+        // Session State
+        let totalAccumulatedMinutes = 0;
+        let isSpinning = false;
+        let soundEnabled = true;
+        let currentWheelAngle = 0; // in radians
+        let historyLogs = [];
+
+        /* ==========================================================================
+           2. WEB AUDIO API (SOUND EFFECTS)
+           ========================================================================== */
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+
+                if (type === 'tick') {
+                    // Short wheel tick sound
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.03);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.03);
+                } 
+                else if (type === 'win_normal') {
+                    // Normal prize chime
+                    const notes = [440, 554.37, 659.25]; // A4, C#5, E5
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.3);
+                    });
+                } 
+                else if (type === 'win_jackpot') {
+                    // Epic Fanfare for Legendary / Mythic
+                    const arpeggio = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+                    arpeggio.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        gain.gain.setValueAtTime(0.3, now + idx * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.5);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.1);
+                        osc.stop(now + idx * 0.1 + 0.5);
+                    });
+                }
+            } catch (e) {
+                console.warn('Audio playback not supported or blocked:', e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const soundIcon = document.getElementById('soundIcon');
+            const soundText = document.getElementById('soundStatusText');
+            if (soundEnabled) {
+                soundIcon.className = 'fa-solid fa-volume-high text-pink-400';
+                soundText.innerText = 'เปิดเสียง';
+            } else {
+                soundIcon.className = 'fa-solid fa-volume-xmark text-gray-500';
+                soundText.innerText = 'ปิดเสียง';
+            }
+        }
+
+        /* ==========================================================================
+           3. CANVAS WHEEL RENDERING
+           ========================================================================== */
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function drawWheel() {
+            const numSegments = prizePool.length;
+            if (numSegments === 0) return;
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 10;
+            const anglePerSegment = (2 * Math.PI) / numSegments;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Segments
+            for (let i = 0; i < numSegments; i++) {
+                const item = prizePool[i];
+                const rarityInfo = RARITY_TYPES[item.rarity] || RARITY_TYPES.COMMON;
+                const startAngle = currentWheelAngle + i * anglePerSegment;
+                const endAngle = startAngle + anglePerSegment;
+
+                // Segment Arc
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.closePath();
+
+                // Fill color
+                ctx.fillStyle = rarityInfo.bg;
+                ctx.fill();
+
+                // Segment Border
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#0b0b14';
+                ctx.stroke();
+
+                // Draw Text & Icon inside segment
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(startAngle + anglePerSegment / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 13px Kanit';
+                
+                // Truncate name if too long
+                let text = item.name;
+                if (text.length > 14) text = text.substring(0, 13) + '…';
+                ctx.fillText(text, radius - 20, 5);
+                ctx.restore();
+            }
+
+            // Outer Neon Border
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#a855f7';
+            ctx.stroke();
+        }
+
+        /* ==========================================================================
+           4. GACHA SPIN LOGIC & ANIMATION
+           ========================================================================== */
+        function getRandomPrizeByWeight() {
+            const totalWeight = prizePool.reduce((sum, item) => sum + Number(item.weight), 0);
+            let randomNum = Math.random() * totalWeight;
+
+            for (let item of prizePool) {
+                if (randomNum < item.weight) {
+                    return item;
+                }
+                randomNum -= item.weight;
+            }
+            return prizePool[0]; // fallback
+        }
+
+        function spinWheel(pullCount = 1) {
+            if (isSpinning || prizePool.length === 0) return;
+            initAudio();
+            isSpinning = true;
+
+            const spinOneBtn = document.getElementById('spinOneBtn');
+            const spinTenBtn = document.getElementById('spinTenBtn');
+            spinOneBtn.disabled = true;
+            spinTenBtn.disabled = true;
+
+            const results = [];
+            for (let i = 0; i < pullCount; i++) {
+                results.push(getRandomPrizeByWeight());
+            }
+
+            // Target final prize to align wheel visually (use the last result)
+            const targetPrize = results[results.length - 1];
+            const targetIndex = prizePool.findIndex(item => item.id === targetPrize.id);
+            const numSegments = prizePool.length;
+            const anglePerSegment = (2 * Math.PI) / numSegments;
+
+            // Target Angle Calculation (Wheel pointer is at top = 270 deg or -PI/2)
+            const targetSegmentAngle = targetIndex * anglePerSegment + (anglePerSegment / 2);
+            const fullSpins = 5 + Math.floor(Math.random() * 3); // 5-7 full spins
+            const targetFinalAngle = (2 * Math.PI * fullSpins) + ((1.5 * Math.PI) - targetSegmentAngle);
+
+            const duration = 4000; // 4 seconds
+            const startTime = performance.now();
+            const startAngle = currentWheelAngle % (2 * Math.PI);
+            let lastTickSegment = -1;
+
+            function animateSpin(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Cubic Ease Out
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                currentWheelAngle = startAngle + (targetFinalAngle - startAngle) * easeOut;
+
+                // Sound Effect Tick on Segment Crossing
+                const normalizedAngle = (currentWheelAngle + Math.PI / 2) % (2 * Math.PI);
+                const currentSegment = Math.floor((2 * Math.PI - normalizedAngle) / anglePerSegment) % numSegments;
+                if (currentSegment !== lastTickSegment) {
+                    playSound('tick');
+                    lastTickSegment = currentSegment;
+                }
+
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    isSpinning = false;
+                    spinOneBtn.disabled = false;
+                    spinTenBtn.disabled = false;
+                    processSpinResults(results);
+                }
+            }
+
+            requestAnimationFrame(animateSpin);
+        }
+
+        /* ==========================================================================
+           5. RESULTS PROCESSING & POPUP MODAL
+           ========================================================================== */
+        function processSpinResults(results) {
+            let roundTotalMinutes = 0;
+            const resultsContainer = document.getElementById('resultCardsContainer');
+            resultsContainer.innerHTML = '';
+
+            let highestRarity = 'COMMON';
+
+            results.forEach((prize, index) => {
+                roundTotalMinutes += prize.minutes;
+                totalAccumulatedMinutes += prize.minutes;
+
+                // Track highest rarity for sounds/effects
+                if (prize.rarity === 'MYTHIC' || highestRarity === 'COMMON') highestRarity = prize.rarity;
+
+                // Add to Log
+                addHistoryLog(prize);
+
+                // Create Result Card HTML
+                const rarity = RARITY_TYPES[prize.rarity] || RARITY_TYPES.COMMON;
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-2xl border flex items-center justify-between shadow-md transition transform hover:scale-[1.02] animate-shimmer`;
+                card.style.borderColor = rarity.color;
+                card.style.backgroundColor = `${rarity.bg}40`; // opacity
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono text-white" style="background-color: ${rarity.color}">
+                            #${index + 1}
+                        </span>
+                        <div class="text-left">
+                            <div class="font-bold text-white text-sm">${prize.name}</div>
+                            <div class="text-[10px] font-semibold tracking-wider uppercase" style="color: ${rarity.color}">
+                                ${rarity.name}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right font-black text-base ${prize.minutes < 0 ? 'text-red-400' : 'text-pink-300'}">
+                        ${prize.minutes >= 0 ? '+' : ''}${prize.minutes} นาที
+                    </div>
+                `;
+                resultsContainer.appendChild(card);
+            });
+
+            // Update Total Counter Display
+            updateTotalTimeDisplay();
+
+            // Play Win Sound
+            if (highestRarity === 'MYTHIC' || highestRarity === 'LEGENDARY') {
+                playSound('win_jackpot');
+                triggerConfetti();
+            } else {
+                playSound('win_normal');
+            }
+
+            // Update Result Summary Badge
+            const summaryBadge = document.getElementById('resultTotalTimeBadge');
+            summaryBadge.innerText = `${roundTotalMinutes >= 0 ? '+' : ''}${roundTotalMinutes} นาที`;
+            summaryBadge.className = `text-2xl font-bold font-mono ${roundTotalMinutes < 0 ? 'text-red-400' : 'text-pink-400 neon-text-pink'}`;
+
+            // Show Result Modal
+            openResultModal();
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        /* ==========================================================================
+           6. TIME FORMATTING & UI UPDATES
+           ========================================================================== */
+        function updateTotalTimeDisplay() {
+            const display = document.getElementById('totalTimeDisplay');
+            const sign = totalAccumulatedMinutes >= 0 ? '+' : '-';
+            const absMins = Math.abs(totalAccumulatedMinutes);
+
+            const hrs = Math.floor(absMins / 60);
+            const mins = absMins % 60;
+            const secs = 0; // standard minute tracking
+
+            const formatted = `${sign}${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            display.innerText = formatted;
+        }
+
+        function resetTotalTime() {
+            if (confirm('คุณต้องการรีเซ็ตเวลาสะสมเป็น 0 ใช่หรือไม่?')) {
+                totalAccumulatedMinutes = 0;
+                updateTotalTimeDisplay();
+            }
+        }
+
+        function copyTotalTime() {
+            const text = document.getElementById('totalTimeDisplay').innerText;
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            
+            alert('คัดลอกเวลารวมเรียบร้อยแล้ว: ' + text);
+        }
+
+        function addHistoryLog(prize) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            historyLogs.unshift({ time: timeStr, name: prize.name, minutes: prize.minutes, rarity: prize.rarity });
+            if (historyLogs.length > 50) historyLogs.pop(); // max 50 items
+
+            renderHistoryTable();
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            if (historyLogs.length === 0) {
+                tbody.innerHTML = `
+                    <tr id="emptyHistoryRow">
+                        <td colspan="3" class="text-center py-8 text-gray-500 italic">ยังไม่มีประวัติการสุ่มเวลา</td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = historyLogs.map(log => {
+                const rarity = RARITY_TYPES[log.rarity] || RARITY_TYPES.COMMON;
+                return `
+                    <tr class="hover:bg-purple-900/10 transition">
+                        <td class="py-2.5 text-gray-400 font-mono">${log.time}</td>
+                        <td class="py-2.5 font-medium text-white flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full" style="background-color: ${rarity.color}"></span>
+                            ${log.name}
+                        </td>
+                        <td class="py-2.5 text-right font-mono font-bold ${log.minutes < 0 ? 'text-red-400' : 'text-pink-400'}">
+                            ${log.minutes >= 0 ? '+' : ''}${log.minutes}m
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function clearHistory() {
+            historyLogs = [];
+            renderHistoryTable();
+        }
+
+        function renderRarityOddsList() {
+            const rarityListContainer = document.getElementById('rarityList');
+            const totalWeight = prizePool.reduce((sum, item) => sum + Number(item.weight), 0);
+            
+            document.getElementById('itemCountBadge').innerText = `${prizePool.length} รายการ`;
+
+            rarityListContainer.innerHTML = prizePool.map(item => {
+                const rarity = RARITY_TYPES[item.rarity] || RARITY_TYPES.COMMON;
+                const percentage = totalWeight > 0 ? ((item.weight / totalWeight) * 100).toFixed(1) : 0;
+
+                return `
+                    <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-purple-950/40 border border-purple-900/30">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${rarity.color}"></span>
+                            <span class="text-gray-200 font-medium">${item.name}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold text-white" style="background-color: ${rarity.color}40; border: 1px solid ${rarity.color}">
+                                ${rarity.name.split(' ')[0]}
+                            </span>
+                            <span class="font-mono text-pink-300 font-bold w-12 text-right">${percentage}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /* ==========================================================================
+           7. MODAL & SETTINGS MANAGEMENT
+           ========================================================================== */
+        function openSettingsModal() {
+            renderSettingsForm();
+            const modal = document.getElementById('settingsModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function openResultModal() {
+            const modal = document.getElementById('resultModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeResultModal() {
+            const modal = document.getElementById('resultModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function renderSettingsForm() {
+            const container = document.getElementById('settingsItemList');
+            container.innerHTML = prizePool.map((item, index) => `
+                <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl flex flex-wrap sm:flex-nowrap items-center gap-3">
+                    <div class="w-full sm:w-2/5">
+                        <label class="text-[10px] text-gray-400 block mb-1">ชื่อรางวัล</label>
+                        <input type="text" id="itemName_${index}" value="${item.name}" class="w-full bg-gray-900 border border-purple-900 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                    </div>
+                    <div class="w-1/2 sm:w-1/5">
+                        <label class="text-[10px] text-gray-400 block mb-1">นาที (+/-)</label>
+                        <input type="number" id="itemMinutes_${index}" value="${item.minutes}" class="w-full bg-gray-900 border border-purple-900 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                    </div>
+                    <div class="w-1/2 sm:w-1/4">
+                        <label class="text-[10px] text-gray-400 block mb-1">ระดับ Rarity</label>
+                        <select id="itemRarity_${index}" class="w-full bg-gray-900 border border-purple-900 rounded-lg px-2 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                            ${Object.keys(RARITY_TYPES).map(rKey => `
+                                <option value="${rKey}" ${item.rarity === rKey ? 'selected' : ''}>${rKey}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="w-1/2 sm:w-1/6">
+                        <label class="text-[10px] text-gray-400 block mb-1">น้ำหนัก (Weight)</label>
+                        <input type="number" step="0.1" id="itemWeight_${index}" value="${item.weight}" class="w-full bg-gray-900 border border-purple-900 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-pink-500 outline-none">
+                    </div>
+                    <div class="sm:pt-4">
+                        <button onclick="removePrizeItem(${index})" class="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-900/20">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addNewPrizeItem() {
+            prizePool.push({
+                id: Date.now(),
+                name: '+2 นาที',
+                minutes: 2,
+                rarity: 'COMMON',
+                weight: 10
+            });
+            renderSettingsForm();
+        }
+
+        function removePrizeItem(index) {
+            if (prizePool.length <= 2) {
+                alert('ต้องมีรายการอย่างน้อย 2 รายการสำหรับหมุนวงล้อ!');
+                return;
+            }
+            prizePool.splice(index, 1);
+            renderSettingsForm();
+        }
+
+        function saveSettings() {
+            const updatedPool = [];
+            for (let i = 0; i < prizePool.length; i++) {
+                const nameInput = document.getElementById(`itemName_${i}`);
+                const minInput = document.getElementById(`itemMinutes_${i}`);
+                const rarityInput = document.getElementById(`itemRarity_${i}`);
+                const weightInput = document.getElementById(`itemWeight_${i}`);
+
+                if (nameInput && minInput) {
+                    updatedPool.push({
+                        id: prizePool[i].id || Date.now() + i,
+                        name: nameInput.value || 'รางวัล',
+                        minutes: parseInt(minInput.value) || 0,
+                        rarity: rarityInput.value,
+                        weight: parseFloat(weightInput.value) || 1
+                    });
+                }
+            }
+
+            prizePool = updatedPool;
+            closeSettingsModal();
+            drawWheel();
+            renderRarityOddsList();
+        }
+
+        function loadPreset(presetType) {
+            if (presetType === 'standard') {
+                prizePool = [
+                    { id: 1, name: 'เกลือ! ไม่เพิ่มเวลา', minutes: 0, rarity: 'COMMON', weight: 40 },
+                    { id: 2, name: '+1 นาที', minutes: 1, rarity: 'COMMON', weight: 30 },
+                    { id: 3, name: '+3 นาที', minutes: 3, rarity: 'RARE', weight: 15 },
+                    { id: 4, name: '+5 นาที', minutes: 5, rarity: 'RARE', weight: 8 },
+                    { id: 5, name: '+10 นาที', minutes: 10, rarity: 'EPIC', weight: 4 },
+                    { id: 6, name: '+30 นาที (สตรีมยาว)', minutes: 30, rarity: 'LEGENDARY', weight: 2.5 },
+                    { id: 7, name: 'JACKPOT! +1 ชั่วโมง', minutes: 60, rarity: 'MYTHIC', weight: 0.5 }
+                ];
+            } else if (presetType === 'hardcore') {
+                prizePool = [
+                    { id: 1, name: 'โดนลบเวลา -5 นาที!', minutes: -5, rarity: 'EPIC', weight: 15 },
+                    { id: 2, name: 'โดนลบเวลา -2 นาที!', minutes: -2, rarity: 'RARE', weight: 25 },
+                    { id: 3, name: 'เกลือ! ไม่เพิ่มเวลา', minutes: 0, rarity: 'COMMON', weight: 30 },
+                    { id: 4, name: '+2 นาที', minutes: 2, rarity: 'COMMON', weight: 20 },
+                    { id: 5, name: '+15 นาที', minutes: 15, rarity: 'LEGENDARY', weight: 8 },
+                    { id: 6, name: 'JACKPOT! +45 นาที', minutes: 45, rarity: 'MYTHIC', weight: 2 }
+                ];
+            } else if (presetType === 'generous') {
+                prizePool = [
+                    { id: 1, name: '+2 นาที', minutes: 2, rarity: 'COMMON', weight: 40 },
+                    { id: 2, name: '+5 นาที', minutes: 5, rarity: 'COMMON', weight: 30 },
+                    { id: 3, name: '+10 นาที', minutes: 10, rarity: 'RARE', weight: 18 },
+                    { id: 4, name: '+20 นาที', minutes: 20, rarity: 'EPIC', weight: 8 },
+                    { id: 5, name: '+45 นาที', minutes: 45, rarity: 'LEGENDARY', weight: 3 },
+                    { id: 6, name: 'SUPER JACKPOT +2 ชม.!', minutes: 120, rarity: 'MYTHIC', weight: 1 }
+                ];
+            }
+            renderSettingsForm();
+        }
+
+        /* ==========================================================================
+           8. STREAMER OBS OVERLAY MODE TOGGLE
+           ========================================================================== */
+        function toggleOverlayMode() {
+            document.body.classList.toggle('overlay-mode');
+            const returnBtn = document.querySelector('.overlay-return-btn');
+            if (document.body.classList.contains('overlay-mode')) {
+                returnBtn.classList.remove('hidden');
+            } else {
+                returnBtn.classList.add('hidden');
+            }
+        }
+
+        /* ==========================================================================
+           9. INITIALIZATION ON PAGE LOAD
+           ========================================================================== */
+        window.onload = function () {
+            drawWheel();
+            renderRarityOddsList();
+            updateTotalTimeDisplay();
+
+            // Handle Resize for canvas sharpness
+            window.addEventListener('resize', () => {
+                drawWheel();
+            });
+        };
+    </script>
+</body>
+</html>
